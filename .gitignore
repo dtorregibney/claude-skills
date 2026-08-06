@@ -1,0 +1,7 @@
+# Machine-specific state, never tracked — each machine generates its own via Step 0 setup.
+stata-data-analysis/config.json
+
+# Not part of this repo — other skills that may live in this same folder.
+# (Nothing to list here; untracked files are simply never added, not excluded by pattern.)
+
+.DS_Store
