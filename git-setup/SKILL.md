@@ -2,7 +2,8 @@
 name: git-setup
 description: >
   Set up git and GitHub for a quantitative analysis project — creating a new cost-coded project
-  repo (e.g. under ~/Quantitative Analysis/<CODE> QA), connecting it to GitHub, and teaching the
+  repo (e.g. under ~/Quantitative Analysis, named for its cost code like "ACH QA"), connecting it
+  to GitHub, and teaching the
   branch/pull-request workflow for team collaboration. Use this whenever the user wants to start
   tracking a project with git, needs a new repo set up for a cost code, mentions GitHub,
   collaborating with a team on code, or wants to learn git basics (commits, branches, pull
