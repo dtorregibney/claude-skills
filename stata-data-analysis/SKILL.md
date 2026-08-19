@@ -121,7 +121,19 @@ briefly what's about to happen, then:
      "gui_available": true
    }
    ```
-6. Let the user know setup is done and they won't be asked again on this machine, then continue on to their actual request.
+6. **Check and report this skill's own install scope, since nothing else surfaces this and it's
+   easy to end up in the wrong one without noticing.** Skills can live in two different places:
+   - `~/.claude/skills/` (or the Windows equivalent, `%USERPROFILE%\.claude\skills\`) — **global**,
+     works in every project the user opens.
+   - A specific project's own `.claude/skills/` folder — **project-scoped**, only works there.
+
+   Check which one this actually is (e.g. is this file under the user's home directory, or under
+   a project folder?) and tell the user plainly which they have — don't assume they already know,
+   and don't let a UI element be the only place this information could come from. If they expected
+   global but got project-scoped (or vice versa), that's worth flagging explicitly so they can
+   decide whether to move it, rather than discovering the mismatch later when the skill doesn't
+   trigger somewhere they expected it to.
+7. Let the user know setup is done and they won't be asked again on this machine, then continue on to their actual request.
 
 ## Step 1 — Discover the project's conventions
 

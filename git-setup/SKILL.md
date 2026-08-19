@@ -52,10 +52,25 @@ stata-data-analysis's own discovery step is already checking for.
 
 Check whether this machine already has:
 - A global git identity: `git config --global user.name` and `user.email` both return something.
-- An SSH key: `~/.ssh/id_ed25519` (or `id_rsa`) exists.
+- **Working GitHub authentication** — test this directly with `ssh -T git@github.com` rather than
+  just checking for a specific key filename. A reply like `Hi <username>! You've successfully
+  authenticated...` means auth already works, full stop — regardless of what the key is named,
+  where it lives, or how it got set up (a different filename, a key from another machine's setup,
+  something configured outside this exact workflow). **Checking only for `~/.ssh/id_ed25519` or
+  `id_rsa` is not sufficient** — a real user hit this exact false negative (had working GitHub
+  auth already, got incorrectly told they needed to set it up from scratch). The `ssh -T` test is
+  the ground truth; a missing default-named file is not evidence of anything on its own.
 
-**If both are already set up**, this machine has done this before — skip straight to Step 1, and
-don't re-explain concepts the user has clearly already been through.
+**If both are already set up** (identity configured AND `ssh -T git@github.com` succeeds), this
+machine has done this before — skip straight to Step 1, and don't re-explain concepts or generate
+a redundant new key.
+
+**Also check and report this skill's own install scope**, the first time this runs on a machine:
+is `git-setup` itself sitting in the user's global `~/.claude/skills/` (works in every project) or
+inside one specific project's own `.claude/skills/` folder (works only there)? Tell them plainly
+which — this is easy to get wrong when following install instructions, and nothing else in the
+interface reliably surfaces it. See stata-data-analysis's Step 0 for the same check in more
+detail; the reasoning is identical here.
 
 **If not, walk through setup:**
 
