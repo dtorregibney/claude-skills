@@ -29,6 +29,44 @@ This also has a second benefit for this kind of work specifically: analysis data
 FERPA-sensitive (student/educator records), and GitHub is a code-hosting tool, not a place that
 sensitive data should ever end up. Code goes to git; data stays on Drive. Always.
 
+## Platform — this skill was written on a Mac; check before assuming
+
+The paths and commands throughout are written in Unix shorthand (`~/`, forward slashes). That
+reads fine on macOS and silently misleads on Windows, where a real user hit every one of the
+gotchas below. **Check the platform first**, then translate.
+
+| | macOS | Windows |
+|---|---|---|
+| Home | `~/` | `C:\Users\<Name>\` (`$env:USERPROFILE` in PowerShell) |
+| Project code folder | `~/Quantitative Analysis/<CODE> QA` | `C:\Users\<Name>\Quantitative Analysis\<CODE> QA` |
+| Google Drive root | `~/Library/CloudStorage/GoogleDrive-<email>/` | a **drive letter**, usually `G:\` |
+| Shell | bash/zsh | PowerShell (and Git Bash, if Git for Windows is installed) |
+
+**Finding Google Drive on Windows — don't guess the letter.** It is not always `G:`. Run:
+
+```
+Get-PSDrive -PSProvider FileSystem
+```
+
+The Drive mount shows up with `Google Drive` in its `Description` column. Underneath it you'll
+find `Shared drives\` and `My Drive\` — the same two containers as on Mac, just reached
+differently. On macOS the equivalent is `ls ~/Library/CloudStorage/`.
+
+**Everything on Windows has spaces in it** — `C:\Users\Libby Schwaner`, `Quantitative Analysis`,
+`TEST QA`, `My Drive`, `Shared drives`. Quote every path in every command, without exception. This
+bites harder on Windows than Mac because it's unavoidable rather than occasional.
+
+**PowerShell specifics that will waste time otherwise:**
+
+- **`~` is not reliably expanded when passed to a native `.exe`** (`ssh-keygen`, `ssh`, `git`).
+  PowerShell cmdlets understand `~`; the programs being invoked often receive it literally and
+  create a folder actually named `~`. Use `"$env:USERPROFILE\..."` for native commands.
+- **An empty-string argument needs doubled quoting.** `-N ""` reaches the executable as nothing at
+  all, so `ssh-keygen` prompts interactively for a passphrase and hangs. Write `-N '""'`.
+- **`Get-ChildItem` on a path that doesn't exist returns exit code 1**, which reads as a failed
+  command rather than a clean "no". Use `Test-Path` for existence checks.
+- **`&&` and `||` don't work in Windows PowerShell 5.1.** Use `;` or `if ($?) { ... }`.
+
 ## Step -1 — Ask whether this project even wants git/GitHub
 
 Not every project needs this. Before doing anything else for a **genuinely new** project (no
@@ -52,6 +90,11 @@ stata-data-analysis's own discovery step is already checking for.
 
 Check whether this machine already has:
 - A global git identity: `git config --global user.name` and `user.email` both return something.
+  **"Returns something" is not the same as "is correct."** Actually look at the value of
+  `user.name` — a real user had it set to their *email address*, so every commit they'd ever made
+  was attributed to `first.last@example.com` instead of a human name. If `user.name` contains an
+  `@`, or is otherwise obviously not a person's name, flag it and offer to fix it. Note that
+  correcting it only affects future commits; past ones keep the old attribution.
 - **Working GitHub authentication** — test this directly with `ssh -T git@github.com` rather than
   just checking for a specific key filename. A reply like `Hi <username>! You've successfully
   authenticated...` means auth already works, full stop — regardless of what the key is named,
@@ -60,6 +103,14 @@ Check whether this machine already has:
   `id_rsa` is not sufficient** — a real user hit this exact false negative (had working GitHub
   auth already, got incorrectly told they needed to set it up from scratch). The `ssh -T` test is
   the ground truth; a missing default-named file is not evidence of anything on its own.
+- **`gh auth status` failing does NOT mean GitHub is unconfigured.** The `gh` CLI keeps its own
+  credentials, entirely separate from SSH. A real user had `gh auth status` reporting *"You are not
+  logged into any GitHub hosts"* while `ssh -T git@github.com` succeeded and `git push` worked
+  perfectly — because git over SSH never consults `gh` at all. This split is especially common on
+  Windows, where Git for Windows and the GitHub CLI are two unrelated installers. Never report
+  "GitHub isn't set up" on the strength of a `gh` failure; `gh` only matters if the user
+  specifically wants commands like `gh pr create`, and it's worth saying so plainly rather than
+  leaving a scary-looking error unexplained.
 
 **If both are already set up** (identity configured AND `ssh -T git@github.com` succeeds), this
 machine has done this before — skip straight to Step 1, and don't re-explain concepts or generate
@@ -82,24 +133,50 @@ detail; the reasoning is identical here.
    git config --global user.email "their.email@example.com"
    git config --global init.defaultBranch main
    ```
-2. **SSH key**, so their machine can authenticate to GitHub without a password every time:
+2. **SSH key**, so their machine can authenticate to GitHub without a password every time.
+
+   **macOS/Linux:**
    ```
    ssh-keygen -t ed25519 -C "their.email@example.com" -f ~/.ssh/id_ed25519 -N ""
    ```
+
+   **Windows (PowerShell)** — three separate differences, all of which have bitten someone:
+   ```
+   New-Item -ItemType Directory -Force "$env:USERPROFILE\.ssh" | Out-Null
+   ssh-keygen -t ed25519 -C "their.email@example.com" -f "$env:USERPROFILE\.ssh\id_ed25519" -N '""'
+   ```
+   The `.ssh` folder often doesn't exist yet on a fresh Windows profile and `ssh-keygen` will fail
+   rather than create it. `~` must become `$env:USERPROFILE` because `ssh-keygen` is a native
+   executable. And `-N ""` must become `-N '""'`, or the empty passphrase never arrives and the
+   command sits waiting on an interactive prompt that a non-interactive tool call can't answer.
+
    Explain briefly: this creates a key *pair* — a private key that never leaves the machine, and a
    public key that's safe to share. GitHub uses the public key to verify it's really them, without
    the private key (or a password) ever crossing the network.
 3. **Adding the key to GitHub is an account action the user must do themselves**, in their own
    logged-in browser — don't attempt this through an agent-controlled browser session, since it
-   requires their authenticated GitHub session. Print the public key (`cat ~/.ssh/id_ed25519.pub`)
-   and direct them to `github.com/settings/keys` → **New SSH key** → paste it.
+   requires their authenticated GitHub session. Print the public key and direct them to
+   `github.com/settings/keys` → **New SSH key** → paste it. Read the `.pub` file with whatever
+   file-reading tool is at hand (`cat ~/.ssh/id_ed25519.pub` on macOS) — and paste the whole single
+   line, `ssh-ed25519 AAAA… email` included, since GitHub rejects a partial key.
+
+   Then **stop and wait for them to confirm they've added it.** Don't proceed to the verify step in
+   the same breath; it will fail for the ordinary reason that they haven't finished yet, which is
+   easy to misread as a broken key.
 4. **Verify it worked:**
    ```
-   ssh -T git@github.com
+   ssh -T -o StrictHostKeyChecking=accept-new git@github.com
    ```
    A reply like `Hi <username>! You've successfully authenticated, but GitHub does not provide
    shell access.` is success — the "no shell access" part is expected, not an error (it exits
    non-zero, which is also normal here).
+
+   The `-o StrictHostKeyChecking=accept-new` matters on any machine connecting to GitHub for the
+   first time. Without it, ssh asks *"Are you sure you want to continue connecting (yes/no)?"* and
+   waits — which hangs a non-interactive tool call until it times out, looking like a network
+   problem rather than an unanswered prompt. The flag accepts GitHub's host key on first sight
+   (printing `Warning: Permanently added 'github.com'…`, which is informational) while still
+   refusing a *changed* key later, so it doesn't give up the protection that matters.
 
 **Steps 1 and 2 below are a single unit of work, not sequential-but-separable tasks.** A project
 isn't "set up" after Step 1 — a local `git init` with no GitHub remote is an unfinished setup that
@@ -117,6 +194,14 @@ repo `<code>-qa` (lowercase, hyphenated — GitHub's convention, vs. the spaced 
 **First, the Drive side.** Ask where this project's data should live on Drive if it isn't already
 obvious (a Shared Drive the client/team already uses, or `My Drive/<CODE> - <short project name>`
 for something more personal/exploratory) — don't guess at a location in a shared team Drive.
+
+Before asking, **list the Shared drives and offer what's actually there** rather than asking in the
+abstract. Shared drives are often already cost-coded (`AIK - Gates - Coalition for…`, `TAI - Texas
+2036 - State AI Framework…`), so the right home is usually the one whose code matches — and that
+puts the data where the client team is already looking. Windows: `Get-ChildItem "G:\Shared drives"`
+(confirm the letter first, per the platform section). macOS: look under
+`~/Library/CloudStorage/GoogleDrive-<email>/Shared drives/`.
+
 Once you know where, create:
 
 ```
@@ -133,21 +218,49 @@ Once you know where, create:
 Tell the user the path (and, if useful, that they can also find it by searching the folder name in
 the Drive web UI) so they know where to drop the raw file(s) they've received.
 
-**Then, the local (code) side.** Create the local skeleton at `~/Quantitative Analysis/<CODE> QA/`:
+**Then, the local (code) side.** Create the local skeleton at `~/Quantitative Analysis/<CODE> QA/`
+(on Windows, `C:\Users\<Name>\Quantitative Analysis\<CODE> QA\`):
 
 ```
 <CODE> QA/
 ├── .gitignore        (ignores data/output/log file types & folders — see below)
 ├── README.md         (explains the code-only convention + where this project's Drive data lives)
 └── Programs/
-    └── 00_master.do   (path-globals header pointing at the Drive folder above; see
-                        stata-data-analysis skill — fill in the real Drive paths now, don't leave
-                        them as placeholders, since you already know them from this step)
+    ├── 00_paths.do    (defines the path globals pointing at the Drive folder above — and NOTHING
+    │                   else; fill in the real Drive paths now, don't leave them as placeholders,
+    │                   since you already know them from this step)
+    └── 00_master.do   (sources 00_paths.do, then calls each pipeline script in order; the call
+                        list starts empty)
 ```
+
+**Two files, not one.** Path globals go in `00_paths.do`; `00_master.do` sources it and runs the
+pipeline. Don't collapse them, even though one file looks simpler at this stage — every pipeline
+script sources `00_paths.do` directly so it can still run standalone, and if the globals lived in
+`00_master.do` instead, master would call a script that calls master that calls the script, until
+Stata dies with `system limit exceeded` (r(1000)). This is stata-data-analysis's rule and the
+reason is spelled out there; create the two files that way from the start so the project never
+has to be untangled later.
+
+Have `00_paths.do` **fail loudly if Drive isn't reachable**, so a later "file not found" doesn't get
+misdiagnosed as a data problem when the real cause is that Drive isn't mounted:
+
+```
+capture confirm file "$drive/Data/raw"
+if _rc {
+    display as error "Cannot reach $drive -- is Google Drive mounted?"
+    exit 601
+}
+```
+
+**Use forward slashes in the Stata globals even on Windows** — `"G:/My Drive/<CODE> - <name>"`.
+Stata accepts them on every platform, whereas backslashes in Stata string literals invite escaping
+bugs that surface as baffling file-not-found errors.
 
 `.gitignore` should exclude at minimum: `*.dta *.log *.xlsx *.xlsm *.csv *.docx *.gph *.png Data/
 Output/ Logs/ .DS_Store` — this is a safety net, since data/output should never even be created in
-this folder in the first place, only referenced from Drive via the globals in `00_master.do`.
+this folder in the first place, only referenced from Drive via the globals in `00_paths.do`. On
+Windows also add `Thumbs.db` and `desktop.ini`, which are the local equivalents of `.DS_Store` and
+will otherwise show up as mystery untracked files.
 
 Then:
 ```
@@ -155,6 +268,18 @@ git init
 git add .gitignore README.md Programs/
 git commit -m "Initial project skeleton"
 ```
+
+On Windows this prints `warning: in the working copy of '.gitignore', LF will be replaced by CRLF
+the next time Git touches it` for every file. **It's harmless** — git is storing Unix line endings
+and handing back Windows ones — but it looks like something went wrong to anyone new to git, so say
+so before they ask. Committing a `.gitattributes` containing `* text=auto` silences it if the noise
+is bothersome.
+
+**Then tell the user, explicitly, that `Programs/` will not appear on Drive.** They will go looking
+for it there — a real user did, and reasonably concluded that setup had half-failed. The split is
+the least intuitive thing about this whole arrangement, so state both locations plainly, say which
+one holds the `.do` files, and suggest pinning the local `Programs\` folder to Quick Access or the
+Finder sidebar. It's the one folder they'll use constantly that can't be found by searching Drive.
 
 ## Step 2 — Create and connect the GitHub repo
 
@@ -169,6 +294,21 @@ git remote add origin git@github.com:<username>/<code>-qa.git
 git push -u origin main
 ```
 (`-u` sets up tracking, so future `git push`/`git pull` need no arguments.)
+
+Adding the remote works offline and proves nothing, so it's fine to set it up *before* they've
+finished creating the repo — but confirm the repo exists before declaring success. `git ls-remote
+origin` is a read-only way to check without pushing anything.
+
+**Reading the failures correctly**, since they're easy to misattribute:
+
+- `ERROR: Repository not found.` — authentication succeeded; the repo just isn't there yet, or the
+  name doesn't match the remote exactly (`test-qa` vs `test_qa`, wrong owner). It is *not* a
+  permissions or key problem. Note that GitHub deliberately returns this same message for a private
+  repo you can't access, so it can't distinguish "doesn't exist" from "exists but not visible to
+  you."
+- `Permission denied (publickey)` — this one *is* the key. Go back to the `ssh -T` check.
+- `! [rejected] main -> main (fetch first)` — you have write access and the remote has commits you
+  don't. Auth is fine; `git fetch` then reconcile.
 
 ## Step 3 — Teach (or remind) the branch / pull request workflow
 
