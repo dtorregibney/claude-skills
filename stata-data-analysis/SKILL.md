@@ -90,24 +90,50 @@ briefly what's about to happen, then:
      running their terminal/Claude Code session is allowed to control Stata's flavor app. Running
      the test once is often what triggers macOS to show that permission prompt in the first place.
 
-   **Windows** (⚠️ experimental — `scripts/run_do_gui.ps1` uses Stata's OLE Automation interface,
-   the same mechanism the Mac AppleScript dictionary explicitly says it was ported from, but this
-   specific script has not yet been verified against a live Windows install the way the Mac path
-   has). Test it with the same smoke-test pattern:
-   `powershell -File scripts/run_do_gui.ps1 -DoFile scripts/smoke_test.do -Flavor <flavor>`
-   (e.g. `-Flavor StataBE`). If the `New-Object -ComObject` call fails, the ProgID guess
-   (`stata.<Flavor>OLEApp`) may be wrong for this install — try the fallback `stata.StataOLEApp` (no
-   flavor prefix) mentioned in the script's own error message before concluding GUI mode isn't
-   available at all. **Treat the first real run of this on any Windows machine as a live test, not
-   a known-working feature** — ask what actually happened (exact error text, or confirmation the
-   Results window appeared) so the script can be corrected based on that machine's real behavior,
-   the same way the Mac version was debugged against real results earlier.
+   **Windows — try `run_do_gui_cli.ps1` FIRST; it needs no admin rights** (verified live on
+   Stata/BE 18.0, Windows 11). Stata's own command line runs a do-file inside the visible GUI
+   whenever the batch flag is omitted — no COM registration, no elevation, nothing to configure:
+   ```
+   powershell -File scripts/run_do_gui_cli.ps1 -DoFile scripts/smoke_test.do
+   ```
+   It reads `stata_cmd` from `config.json`, so there's usually nothing else to pass. Ask the user
+   to confirm they can see the Stata window and its Results output — the exit code alone isn't
+   proof the window is visible to them.
+
+   **One hard requirement in this mode: the `.do` file MUST call `log using` explicitly.** Stata
+   writes no automatic log when running in the GUI, and since launching the GUI doesn't hand back a
+   return code, that log is the only way to tell a clean run from a failed one (grepped for
+   `r(###)`, exactly as headless does). The skill's standard file shape already includes
+   `log using`, so this costs nothing — but a `.do` file without one will simply produce nothing to
+   check, and the script bails after `-LogAppearSec` (45s default) telling you so.
+
+   **`run_do_gui.ps1` (OLE Automation) is the fallback, not the first choice.** It's a genuinely
+   nicer mechanism — it returns Stata's real `_rc` rather than inferring success from a log — but it
+   requires `StataBE-64.exe /Register` from an **elevated** prompt before the ProgID exists at all.
+   On a managed work machine the user frequently *cannot* do that, and an unelevated `/Register`
+   fails silently: it writes nothing, creates no `HKCU\Software\Classes` fallback, and reports no
+   error (confirmed live). If Automation isn't registered, every candidate ProgID fails with
+   `0x80040154 REGDB_E_CLASSNOTREG` and `HKEY_CLASSES_ROOT` holds only file associations
+   (`Stata18Do`, `Stata18Data`, …) with no Automation class — that's the signature, and it means
+   "needs admin", not "wrong ProgID". Don't send the user chasing ProgID guesses in that state, and
+   don't offer to run `/Register` on their behalf; it's an elevated system change that's theirs to
+   make. Only if Automation *is* registered and the object still won't create is the ProgID guess
+   (`stata.<Flavor>OLEApp`, fallback `stata.StataOLEApp`) worth investigating.
+
+   **Writing `.do` files on Windows: never emit a UTF-8 BOM.** PowerShell 5.1's
+   `Out-File -Encoding utf8` (and `>`/`>>`) prepend one, and Stata fails on line 1 of a BOM'd file
+   — which in GUI mode means no log at all, so the failure looks like a hang rather than a syntax
+   error. Hit live during this script's own testing. Write `.do` files with a tool that emits plain
+   UTF-8, or `Set-Content -Encoding ascii`.
 
    **Either OS**, once you have an answer:
    - Record whether GUI mode worked in `config.json` (`"gui_available": true/false`, plus
      `"os": "mac"` or `"os": "windows"` so Step 3 knows which script to invoke) — if it didn't,
      that's fine, just fall back to headless (`run_do.sh`) for all runs and don't bring it up again
      *unless the user explicitly asks about GUI mode later*.
+   - On Windows, also record **which** GUI mechanism worked, since there are two and they aren't
+     interchangeable: `"gui_mode": "cli"` (the admin-free `run_do_gui_cli.ps1`) or
+     `"gui_mode": "ole"` (`run_do_gui.ps1`). Step 3 needs this to pick the right script.
    - **If the user explicitly asks to enable or retry GUI mode** (e.g. after fixing a permission,
      or after a Windows ProgID correction), re-run this check regardless of what's currently cached
      in `config.json` — a cached `false` is a past result, not a standing decision the user can't
@@ -121,6 +147,9 @@ briefly what's about to happen, then:
      "gui_available": true
    }
    ```
+   On Windows, add `"gui_mode": "cli"` or `"gui_mode": "ole"` per the note above, and use forward
+   slashes in `stata_cmd` (e.g. `"C:/Program Files/Stata18/StataBE-64.exe"`) so the value works
+   unchanged from both PowerShell and Git Bash.
 6. **Check and report this skill's own install scope, since nothing else surfaces this and it's
    easy to end up in the wrong one without noticing.** Skills can live in two different places:
    - `~/.claude/skills/` (or the Windows equivalent, `%USERPROFILE%\.claude\skills\`) — **global**,
@@ -251,12 +280,23 @@ different syntax for the same thing:
 # macOS — AppleScript via run_do_gui.sh
 scripts/run_do_gui.sh <path/to/script.do> <flavor>
 
-# Windows — OLE Automation via run_do_gui.ps1
+# Windows, "gui_mode": "cli" — GUI via Stata's command line, no admin needed (the usual case)
+powershell -File scripts/run_do_gui_cli.ps1 -DoFile <path/to/script.do>
+
+# Windows, "gui_mode": "ole" — OLE Automation, only if /Register has been run as admin
 powershell -File scripts/run_do_gui.ps1 -DoFile <path/to/script.do> -Flavor <flavor>
 ```
 
-(`<flavor>` — e.g. `StataBE` — comes from `config.json`.) Exit code `0` means Stata returned
-`r(0)`; anything else is the actual error code, visible right there in the Results window.
+(`<flavor>` — e.g. `StataBE` — comes from `config.json`.) Exit code `0` means a clean run;
+anything else is a failure, visible right there in the Results window. The two Windows modes reach
+that verdict differently, which matters when one disagrees with the log: `ole` returns Stata's real
+`_rc` directly, while `cli` infers it by grepping the log for `r(###)` — so under `cli`, **the
+`.do` file must call `log using`** or there's nothing to grep and the run can't be verified at all.
+
+Under `cli`, Stata's window is deliberately left open with the data still loaded when the run
+finishes — that's the main reason a user asks for GUI mode in the first place. The flip side is
+that each run launches a *new* instance rather than reusing the open one, so close the previous
+window between runs or they accumulate.
 
 **Otherwise** (no GUI available, or a context without a display), fall back to the headless
 script, which greps the resulting log for Stata's fixed `r(###);` error format:
