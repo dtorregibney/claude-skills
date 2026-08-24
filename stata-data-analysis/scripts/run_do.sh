@@ -7,6 +7,9 @@
 # for errors here instead of eyeballing the log, since Stata error markers
 # have a fixed, greppable format.
 #
+# Works on macOS/Linux and on Windows under Git Bash (see the platform branch
+# below — the batch flag and argument handling both differ there).
+#
 # Exit code 0 = clean run (no r(###) errors found in the log).
 # Exit code 1 = errors found; the offending lines are printed to stderr.
 # Exit code 2 = usage error or the expected log never appeared.
@@ -34,10 +37,31 @@ if [[ -z "$LOGFILE" ]]; then
   LOGFILE="$DODIR/$BASE.log"
 fi
 
+# Batch-mode flag differs by platform, and getting it wrong doesn't error — it
+# hangs. Unix Stata takes -b; Windows Stata takes /e. Passing -b on Windows makes
+# Stata ignore it, open the full GUI, and sit there waiting for a human forever
+# (verified on a live Stata 18 BE install: a 2-minute tool timeout and two orphaned
+# StataBE-64 processes, with no log file ever written).
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) IS_WINDOWS=1 ;;
+  *)                    IS_WINDOWS=0 ;;
+esac
+
 # Run from the do-file's own directory so relative paths inside the .do file
 # (e.g. "use Data/raw/foo.dta") resolve the same way they would if the user
 # ran it manually from that folder.
-( cd "$DODIR" && "$STATA_CMD" -b do "$DOFILE" )
+if [[ "$IS_WINDOWS" -eq 1 ]]; then
+  # Two Git-Bash-specific hazards, both silent:
+  #   1. MSYS rewrites any argument that looks like a Unix path, so a bare /e
+  #      arrives at Stata as something like C:/Program Files/Git/e and is
+  #      ignored — which lands you right back in the GUI-hang above.
+  #      MSYS_NO_PATHCONV / MSYS2_ARG_CONV_EXCL turn that rewriting off.
+  #   2. Stata for Windows doesn't understand /c/... MSYS paths, so pass the
+  #      plain filename and rely on the cd above rather than the full path.
+  ( cd "$DODIR" && MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' "$STATA_CMD" /e do "$BASE.do" )
+else
+  ( cd "$DODIR" && "$STATA_CMD" -b do "$DOFILE" )
+fi
 
 if [[ ! -f "$LOGFILE" ]]; then
   echo "Expected log not found at $LOGFILE — check whether the .do file calls 'log using' with a different path, and pass that path explicitly as the third argument." >&2
