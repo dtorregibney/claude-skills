@@ -181,20 +181,6 @@ impose a new one. Before writing anything:
   analysis code? Deliverables (tables, exports) never belong mixed in with the `.do` files.
 - Read one or two existing `.do` files in full to pick up header style, comment density, and how
   they reference data (absolute paths vs. relative + `cd`).
-- **Git is optional, not assumed.** Check whether this project already made a choice: a `.git`
-  folder (typically at `~/Quantitative Analysis/<CODE> QA`) means it chose git/GitHub; an existing
-  `Analysis/Programs`-style folder with `.do` files sitting directly inside the project's Drive
-  folder (no `.git` anywhere) means it chose Drive-only. Either is a valid, already-settled choice
-  — don't second-guess it or suggest switching.
-  - If **neither** exists yet (genuinely new project), this hasn't been decided — use the
-    **git-setup** skill first, which asks the git-vs-Drive-only question directly, before any
-    files get created anywhere.
-  - **Only if git was chosen**: a `.git` folder existing is not sufficient on its own — also run
-    `git remote -v` and confirm it shows an `origin`. A local-only repo (git-setup's Step 1 done
-    without its Step 2) accepts commits with no error, so this is easy to miss until someone looks
-    for the work on GitHub and finds nothing. Route back to git-setup to connect the remote before
-    doing real work, not after. **If Drive-only was chosen, none of this applies** — there's no
-    remote to check, and that's correct, not a gap.
 
 **If none of this exists** (a genuinely new project), fall back to this default and say so
 explicitly to the user rather than silently inventing it:
@@ -234,12 +220,12 @@ been reviewed," which a script can't claim on its own behalf.
   a one-glance summary of the whole pipeline, without opening every individual file to remember
   what step 04 was for.
 
-### Every real investigation is a saved, committed script — never a disposable scratchpad file
+### Every real investigation is a saved script — never a disposable scratchpad file
 
 If code reads or manipulates the project's actual data to answer a real question — checking
 whether a flag is accurate, deriving a comparison, anything that informs an actual decision or
 finding — it goes in `Programs/` as a properly numbered file, gets run through the normal
-write → run → verify cycle, and gets committed, exactly like every other step. It does not belong
+write → run → verify cycle, and stays there, exactly like every other step. It does not belong
 in a scratch/tmp file that nobody but the immediate moment ever sees again. The test isn't "is this
 quick" — a one-line `count if` can be a real investigation; the test is whether it touches the
 actual project data to inform a real answer. (Truly disposable scratch use is for testing the

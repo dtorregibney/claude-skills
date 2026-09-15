@@ -1,6 +1,6 @@
 # claude-skills
 
-This directory is a git repo tracking Claude Code skills (`git-setup/`, `stata-data-analysis/`,
+This directory is a git repo tracking Claude Code skills (`stata-data-analysis/`,
 `stata-data-cleaning/`) — and it's also each user's live, working copy: whatever's here is what
 Claude Code actually reads when these skills trigger. There is no separate "real" copy elsewhere.
 
