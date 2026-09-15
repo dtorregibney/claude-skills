@@ -66,6 +66,12 @@ briefly what's about to happen, then:
    **macOS** (well-tested — this path has been verified live, not just written from docs):
    - Check for a scripting dictionary: `find /Applications -iname "*.sdef" -path "*Stata*"`. If one
      exists, the app supports AppleScript automation via a `DoCommand` verb.
+   - **Tell the user what to expect before running the test, not after it fails**: the very first
+     time any app sends Stata a command this way, macOS will very likely pop up a one-time system
+     dialog — something like *"Terminal" wants to control "StataBE"* — with Allow/Don't Allow.
+     This is normal and expected, not a bug; say so up front (*"macOS may show a permission popup
+     in the next few seconds — click Allow if it does"*) so the user recognizes it immediately
+     instead of wondering why nothing seems to be happening.
    - Test it: launch the GUI (`open -a "<flavor>"`, give it a few seconds to start), then run
      `scripts/run_do_gui.sh scripts/smoke_test.do <flavor>` and confirm it reports a clean run
      (exit 0). Ask the user to glance at the Results window and confirm they see
