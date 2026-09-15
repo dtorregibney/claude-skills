@@ -8,9 +8,8 @@ description: >
   mention duplicates, inconsistent coding, missing data, merging multiple datasets, or want a
   dataset prepped/QA'd before analysis — even before they explicitly ask for "cleaning" by name.
   Companion to stata-data-analysis (inherits its Stata-only, annotate-line-by-line, run-until-clean
-  rules) and git-setup (commits at logical cleaning checkpoints on a dedicated branch). Looks at
-  the actual raw data first and tailors its proposed checklist to what's really wrong with it,
-  rather than running through a generic list blindly.
+  rules). Looks at the actual raw data first and tailors its proposed checklist to what's really
+  wrong with it, rather than running through a generic list blindly.
 ---
 
 # Stata Data Cleaning
@@ -23,18 +22,6 @@ mechanics (Stata-only, annotate line-by-line, run via Step 3's GUI-or-headless l
 discover project conventions) from **stata-data-analysis** — read that skill first if you
 haven't. This skill adds
 the cleaning-specific checklist and the "look, propose, write, verify" loop on top of it.
-
-**Git/GitHub is optional here, same as in stata-data-analysis** — some projects are Drive-only by
-deliberate choice, not by oversight. Check which this project already is (see stata-data-analysis's
-discovery step): if it's Drive-only, skip straight to Step 1, and skip Step 4 (git checkpoints)
-entirely later on.
-
-**If this project did choose git, before Step 1, check `git remote -v` in its local repo.** If
-there's no `origin`, setup was left half-finished (git-setup's Step 1 without its Step 2) — a
-local-only repo will happily accept commits with no error, which is exactly why this is easy to
-miss until someone goes looking for the work on GitHub and finds nothing there. Route back to
-git-setup to connect the remote before starting real cleaning work, rather than building a
-cleaning history that isn't backed up or reviewable anywhere.
 
 ## Step 1 — Look at the raw data before proposing anything
 
@@ -142,22 +129,6 @@ broken.
   table at the end — this is the audit trail that answers "how did we go from 50,000 to 48,200
   rows" without having to re-derive it later.
 
-## Step 4 — Git checkpoints (via the git-setup skill's workflow) — skip entirely for Drive-only projects
-
-If this project chose Drive-only (no git), there is no Step 4 — just keep writing, running, and
-verifying scripts per Step 3, and move on once validation passes. Everything below applies only to
-a project that chose git/GitHub.
-
-- Do the cleaning work on its own branch, named for the dataset — e.g. `clean-milestones`, not on
-  `main` directly.
-- Commit at each logical checkpoint, not one giant commit for the whole pass — e.g. "Remove exact
-  duplicates," "Standardize gender coding to 0/1," "Handle missing test scores (MAR — control for
-  cohort)." This gives a readable history of what cleaning decisions were made and in what order,
-  and makes it possible to revert one decision without undoing the rest.
-- Open a pull request once the cleaned dataset passes validation, so a teammate can review the
-  actual cleaning decisions — not just that code ran, but that the *judgment calls* were reasonable
-  — before the cleaned file is treated as final.
-
 ## Whenever a new cleaned dataset is finished, export a data dictionary alongside it
 
 This happens every time, not on request — as soon as a `.dta` file in `Data/modified` is the
@@ -202,10 +173,10 @@ export excel "$datapath/modified/<dataset>_dictionary.xlsx", firstrow(variables)
 restore
 ```
 
-## Step 5 — Hand off to analysis
+## Step 4 — Hand off to analysis
 
-Once validation passes (and the PR is merged, if this project uses git) — say so plainly and
-distinctly: **"I'm done cleaning the data — you're ready for analysis."** This is a real milestone;
+Once validation passes — say so plainly and distinctly: **"I'm done cleaning the data — you're
+ready for analysis."** This is a real milestone;
 don't let it slide by buried in the middle of other output.
 
 Then ask for the research questions or analytic plan, since that should drive what happens next,
