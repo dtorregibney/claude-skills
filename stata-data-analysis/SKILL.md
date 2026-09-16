@@ -196,19 +196,20 @@ inventing it:
 
 ```
 <CODE> QA/
-├── Analysis/Programs/     .do files, numbered 00_, 01_, 02_...
-├── Data/raw/              untouched source files
-├── Data/modified/         cleaned/derived .dta files
-├── Logs/                  .log files from batch runs
+├── Programs/      .do files, numbered 00_, 01_, 02_... (00_master.do + 00_paths.do live here too)
+├── Data/
+│   ├── raw/       untouched source files
+│   └── modified/  cleaned/derived .dta files
+├── Logs/          .log files from batch runs
 └── Output/
-    ├── Unformatted/       fresh exports, straight out of Stata, not yet reviewed
-    └── Formatted/         exports that have been manually reviewed/polished — the actual deliverable
+    ├── Docs/      Word/PowerPoint deliverables (memos, slide decks)
+    └── Tables/    Excel deliverables (comparison tables, backing tables for a memo, etc.)
 ```
 
-The `Output/Unformatted` → `Output/Formatted` split reflects the user's actual workflow: every
-export lands in `Unformatted` first; only after it's been manually reviewed and polished does it
-get moved into `Formatted`. Don't write directly into `Formatted` — that folder means "this has
-been reviewed," which a script can't claim on its own behalf.
+`Programs/` sits directly under the project root — **not** nested under an `Analysis/` folder.
+`Output` splits by file type (`Docs` for Word/PowerPoint, `Tables` for Excel), not by review
+status — there's no separate "reviewed" vs. "unreviewed" folder in this convention; a finished
+export goes straight into whichever of `Docs`/`Tables` matches its format.
 
 ### Keep `00_master.do` wired up — and never let it call anything that calls it back
 
@@ -317,10 +318,9 @@ scripts/run_do.sh <stata_cmd> <path/to/script.do> [path/to/expected.log]
 ## Step 4 — Route outputs correctly
 
 - Finished deliverables — tables for review, formatted exports — go in the discovered (or default)
-  `Output` folder, never mixed into `Analysis`/`Programs` alongside the working code.
-- Fresh exports straight out of Stata go to `Output/Unformatted/` (or whatever equivalent
-  "not yet reviewed" location the project already uses). Don't write into a `Formatted`/reviewed
-  location directly — that's the user's own manual step, after they've looked at it.
+  `Output` folder, never mixed into `Programs` alongside the working code.
+- Route by file type: Excel exports go to `Output/Tables/`, Word/PowerPoint deliverables go to
+  `Output/Docs/` (or whatever equivalent split the project already uses).
 - The `.do` file, its `.log`, and any intermediate `.dta` files stay in their respective
   Programs/Logs/Data folders.
 - **The table is the deliverable that matters most.** Get the underlying analysis correct and the
