@@ -5,7 +5,25 @@ Two Claude Code skills for doing quantitative analysis work in Stata: `stata-dat
 is git-tracked so changes to the skills can be documented over time — that's separate from
 anything the skills do for your own analysis projects, which have no git involvement at all.)
 
-## Install — read this carefully, the wrong method silently breaks updates
+## Install — two options, pick based on whether you want easy updates later
+
+### Option A — no git required at all
+
+If you don't want to deal with git, or aren't sure you have it installed: on this page, click the
+green **Code** button → **Download ZIP**, then unzip it. Move `stata-data-analysis/` and
+`stata-data-cleaning/` into your Claude Code skills folder:
+- **Mac**: `~/.claude/skills/`
+- **Windows**: `%USERPROFILE%\.claude\skills\`
+
+Easier still: just tell your own Claude Code session *"move the stata-data-analysis and
+stata-data-cleaning folders from [wherever you unzipped it] into my Claude Code skills folder"* —
+it has file access and can do this for you directly.
+
+The one tradeoff: getting a later update means re-downloading and re-copying by hand — there's no
+`git pull` shortcut with this method. Fine for trying it out or a one-time install; if you expect
+to want updates as this evolves, Option B is less manual work long-term.
+
+### Option B — clone it, so `git pull` gets you updates later
 
 **Clone this repo directly into your Claude Code skills folder — do not clone it somewhere else
 and then move the subfolders into place.** Git tracking (the `.git` folder) only lives at the
