@@ -196,19 +196,33 @@ inventing it:
 
 ```
 <CODE> QA/
-├── Analysis/Programs/     .do files, numbered 00_, 01_, 02_...
-├── Data/raw/              untouched source files
-├── Data/modified/         cleaned/derived .dta files
-├── Logs/                  .log files from batch runs
+├── Programs/       all .do files together, numbered 00_, 01_, 02_... — cleaning and analysis
+│                   scripts share the same numbered sequence, not split into subfolders
+│                   (00_master.do and 00_paths.do live here too)
+├── Data/
+│   ├── raw/        untouched source files exactly as received
+│   └── modified/   cleaned/derived .dta files
+├── Logs/           .log files from batch runs
 └── Output/
-    ├── Unformatted/       fresh exports, straight out of Stata, not yet reviewed
-    └── Formatted/         exports that have been manually reviewed/polished — the actual deliverable
+    ├── Unformatted/    fresh exports, straight out of Stata, not yet reviewed
+    │   ├── Figures/
+    │   ├── Docs/
+    │   └── Tables/
+    └── Formatted/      exports that have been manually reviewed/polished — final versions
+        ├── Figures/
+        ├── Docs/
+        └── Tables/
 ```
 
-The `Output/Unformatted` → `Output/Formatted` split reflects the user's actual workflow: every
-export lands in `Unformatted` first; only after it's been manually reviewed and polished does it
-get moved into `Formatted`. Don't write directly into `Formatted` — that folder means "this has
-been reviewed," which a script can't claim on its own behalf.
+The `Output/Unformatted` → `Output/Formatted` split is about review status: every export lands in
+`Unformatted` first; only after it's been manually reviewed and polished does it move into
+`Formatted`. Don't write directly into `Formatted` — that folder means "a human signed off on
+this," which a script can't claim on its own behalf. Within each, route by file type — a chart
+goes in `Figures/`, a Word/PowerPoint deliverable in `Docs/`, an Excel table in `Tables/`.
+
+This is the *default* for a genuinely new project. An already-existing project (discovered via
+Step 1 above) keeps whatever structure it already settled on, even if that differs from this
+template in naming or shape — don't retroactively "fix" an existing project to match this default.
 
 ### Keep `00_master.do` wired up — and never let it call anything that calls it back
 
@@ -317,10 +331,11 @@ scripts/run_do.sh <stata_cmd> <path/to/script.do> [path/to/expected.log]
 ## Step 4 — Route outputs correctly
 
 - Finished deliverables — tables for review, formatted exports — go in the discovered (or default)
-  `Output` folder, never mixed into `Analysis`/`Programs` alongside the working code.
+  `Output` folder, never mixed into `Programs` alongside the working code.
 - Fresh exports straight out of Stata go to `Output/Unformatted/` (or whatever equivalent
-  "not yet reviewed" location the project already uses). Don't write into a `Formatted`/reviewed
-  location directly — that's the user's own manual step, after they've looked at it.
+  "not yet reviewed" location the project already uses), then further routed by type — a chart to
+  `Figures/`, a Word/PowerPoint deliverable to `Docs/`, an Excel table to `Tables/`. Don't write
+  into `Formatted` directly — that's the user's own manual step, after they've looked at it.
 - The `.do` file, its `.log`, and any intermediate `.dta` files stay in their respective
   Programs/Logs/Data folders.
 - **The table is the deliverable that matters most.** Get the underlying analysis correct and the
