@@ -188,16 +188,21 @@ impose a new one. Before writing anything:
 - Read one or two existing `.do` files in full to pick up header style, comment density, and how
   they reference data (absolute paths vs. relative + `cd`).
 
-**If none of this exists** (a genuinely new project), fall back to this default and say so
-explicitly to the user rather than silently inventing it:
+**If none of this exists** (a genuinely new project), ask what this project's **cost code** is
+(e.g. `ACH`, `GLB`) if it isn't already clear from context — this becomes the project folder's
+name (`<CODE> QA`), so a colleague opening the same drive later can tell at a glance what belongs
+to what. Then create this default layout and say so explicitly to the user rather than silently
+inventing it:
 
 ```
-Analysis/Programs/     .do files, numbered 00_, 01_, 02_...
-Data/raw/              untouched source files
-Data/modified/         cleaned/derived .dta files
-Logs/                  .log files from batch runs
-Output/Unformatted/    fresh exports, straight out of Stata, not yet reviewed
-Output/Formatted/      exports that have been manually reviewed/polished — the actual deliverable
+<CODE> QA/
+├── Analysis/Programs/     .do files, numbered 00_, 01_, 02_...
+├── Data/raw/              untouched source files
+├── Data/modified/         cleaned/derived .dta files
+├── Logs/                  .log files from batch runs
+└── Output/
+    ├── Unformatted/       fresh exports, straight out of Stata, not yet reviewed
+    └── Formatted/         exports that have been manually reviewed/polished — the actual deliverable
 ```
 
 The `Output/Unformatted` → `Output/Formatted` split reflects the user's actual workflow: every
